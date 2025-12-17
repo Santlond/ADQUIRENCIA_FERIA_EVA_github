@@ -1,0 +1,117 @@
+-- DROP TABLE IF exists {zona_p}.comercios_adq_final_cincox PURGE; 
+-- CREATE TABLE {zona_p}.comercios_adq_final_cincox
+-- PARTITIONED  BY (periodo) STORED AS PARQUET TBLPROPERTIES('transactional' = 'false') AS
+-- WITH mdm as (
+-- SELECT 
+--   cast(numero_id as BIGINT) as num_doc
+--   , desc_segmento as segm
+--   , desc_subsegmento as subsegm
+--   , gerenciamiento
+--   , cod_resp_comercial
+-- FROM resultados_fcr.fcr_mdm_datos_generales_clientes
+-- where year = {MDM[year]}
+-- and month =  {MDM[month]}
+-- and day =    {MDM[day]}
+-- ), adq as (
+-- SELECT 
+--   nit
+--   , codigo_unico
+--   , nombre
+--   , mcc
+--   , tipo_afiliacion
+--   , periodo
+-- from  {zona_p}.vinculaciones_comercios_adq_cincox
+-- ), adq_mdm as (
+-- SELECT
+--   t0.nit
+--   , t0.codigo_unico
+--   , t0.nombre
+--   , t0.mcc
+--   , t0.tipo_afiliacion
+--   , segm
+--   , subsegm
+--   , gerenciamiento
+--   , cod_resp_comercial
+--   , t0.periodo
+-- FROM adq t0
+-- inner join mdm t1
+-- on t0.nit = t1.num_doc
+-- ), pre_pc as(
+-- SELECT 
+--   cod_asesor
+--   , descri_cargo
+--   , descri_region
+--   , descri_zona
+--   , id_sap
+--   , row_number() OVER(PARTITION BY cod_asesor ORDER BY cod_asesor) rn
+-- FROM resultados_vspc_canales.fco_planta_comercial
+-- where ingestion_year= {PLTN[year]}
+-- and ingestion_month= {PLTN[month]}
+-- and ingestion_day= {PLTN[day]}
+-- ), pc as (
+-- select 
+--   cod_asesor
+--   , descri_cargo
+--   , descri_region
+--   , descri_zona
+--   , id_sap
+-- from pre_pc
+-- where rn = 1
+-- ), pre as (
+-- SELECT
+--   t0.nit
+--   , t0.codigo_unico
+--   , t0.nombre
+--   , t0.mcc
+--   , t0.tipo_afiliacion
+--   , t0.segm
+--   , t0.subsegm
+--   , t0.gerenciamiento
+--   , t0.cod_resp_comercial 
+--   , t1.cod_asesor
+--   , t1.descri_cargo
+--   , t1.descri_region
+--   , t1.descri_zona
+--   , t0.periodo
+-- FROM adq_mdm t0
+-- LEFT JOIN pc t1
+-- on t0.cod_resp_comercial = t1.id_sap
+-- ), final as (
+-- SELECT
+--   nit
+--   , codigo_unico
+--   , nombre
+--   , mcc
+--   , tipo_afiliacion
+--   , segm
+--   , subsegm
+--   , gerenciamiento
+--   , cod_resp_comercial 
+--   , cod_asesor
+--   , descri_cargo
+--   , descri_region
+--   , descri_zona
+--   , periodo
+--   , row_number() OVER(PARTITION BY codigo_unico ORDER BY nit ) as rn
+-- from pre 
+-- )
+-- SELECT
+--   nit
+--   , codigo_unico
+--   , nombre
+--   , mcc
+--   , tipo_afiliacion
+--   , segm
+--   , subsegm
+--   , gerenciamiento
+--   , cod_resp_comercial 
+--   , cod_asesor
+--   , descri_cargo
+--   , descri_region
+--   , descri_zona
+--   , periodo
+-- from final
+-- WHERE rn = 1
+-- ; 
+
+-- COMPUTE stats {zona_p}.comercios_adq_final_cincox;
